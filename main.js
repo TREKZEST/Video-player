@@ -1,132 +1,131 @@
-//1
-const balance = document.getElementById(
-  "balance"
-);
-const money_plus = document.getElementById(
-  "money-plus"
-);
-const money_minus = document.getElementById(
-  "money-minus"
-);
-const list = document.getElementById("list");
-const form = document.getElementById("form");
-const text = document.getElementById("text");
-const amount = document.getElementById("amount");
-// const dummyTransactions = [
-//   { id: 1, text: "Flower", amount: -20 },
-//   { id: 2, text: "Salary", amount: 300 },
-//   { id: 3, text: "Book", amount: -10 },
-//   { id: 4, text: "Camera", amount: 150 },
-// ];
+const modal = document.getElementById('modal');
+const modalShow = document.getElementById('show-modal');
+const modalClose = document.getElementById('close-modal');
+const bookmarkForm = document.getElementById('bookmark-form');
+const websiteNameEl = document.getElementById('website-name');
+const websiteUrlEl = document.getElementById('website-url');
+const bookmarksContainer = document.getElementById('bookmarks-container');
 
-// let transactions = dummyTransactions;
+let bookmarks = [];
 
-//last 
-const localStorageTransactions = JSON.parse(localStorage.getItem('transactions'));
+// Show Modal, Focus on Input
+function showModal() {
+  modal.classList.add('show-modal');
+  websiteNameEl.focus();
+}
 
-let transactions = localStorage.getItem('transactions') !== null ? localStorageTransactions : [];
+// Modal Event Listeners
+modalShow.addEventListener('click', showModal);
+modalClose.addEventListener('click', () => modal.classList.remove('show-modal'));
+window.addEventListener('click', (e) => (e.target === modal ? modal.classList.remove('show-modal') : false));
 
-//5
-//Add Transaction
-function addTransaction(e){
-  e.preventDefault();
-  if(text.value.trim() === '' || amount.value.trim() === ''){
-    alert('please add text and amount')
-  }else{
-    const transaction = {
-      id:generateID(),
-      text:text.value,
-      amount:+amount.value
-    }
-
-    transactions.push(transaction);
-
-    addTransactionDOM(transaction);
-    updateValues();
-    updateLocalStorage();
-    text.value='';
-    amount.value='';
+// Validate Form
+function validate(nameValue, urlValue) {
+  const expression = /(https)?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
+  const regex = new RegExp(expression);
+  if (!nameValue || !urlValue) {
+    alert('Please submit values for both fields.');
+    return false;
   }
+  if (!urlValue.match(regex)) {
+    alert('Please provide a valid web address.');
+    return false;
+  }
+  // Valid
+  return true;
 }
 
-
-//5.5
-//Generate Random ID
-function generateID(){
-  return Math.floor(Math.random()*1000000000);
+// Build Bookmarks
+function buildBookmarks() {
+  // Remove all bookmark elements
+  bookmarksContainer.textContent = '';
+  // Build items
+  bookmarks.forEach((bookmark) => {
+    const { name, url } = bookmark;
+    // Item
+    const item = document.createElement('div');
+    item.classList.add('items');
+    // Close Icon
+    const closeIcon = document.createElement('i');
+    closeIcon.classList.add('fas', 'fa-times');
+    closeIcon.setAttribute('title', 'Delete Bookmark');
+    closeIcon.setAttribute('onclick', `deleteBookmark('${url}')`);
+    // Favicon / Link Container
+    const linkInfo = document.createElement('div');
+    linkInfo.classList.add('name');
+    // Favicon
+    const favicon = document.createElement('img');
+    favicon.setAttribute('src', `https://s2.googleusercontent.com/s2/favicons?domain=${url}`);
+    favicon.setAttribute('alt', 'Favicon');
+    // Link
+    const link = document.createElement('a');
+    link.setAttribute('href', `${url}`);
+    link.setAttribute('target', '_blank');
+    link.textContent = name;
+    // Append to bookmarks container
+    linkInfo.append(favicon, link);
+    item.append(closeIcon, linkInfo);
+    bookmarksContainer.appendChild(item);
+  });
 }
 
-//2
-
-//Add Trasactions to DOM list
-function addTransactionDOM(transaction) {
-  //GET sign
-  const sign = transaction.amount < 0 ? "-" : "+";
-  const item = document.createElement("li");
-
-  //Add Class Based on Value
-  item.classList.add(
-    transaction.amount < 0 ? "minus" : "plus"
-  );
-
-  item.innerHTML = `
-    ${transaction.text} <span>${sign}${Math.abs(
-    transaction.amount
-  )}</span>
-    <button class="delete-btn" onclick="removeTransaction(${transaction.id})">x</button>
-    `;
-  list.appendChild(item);
+// Fetch bookmarks
+function fetchBookmarks() {
+  // Get bookmarks from localStorage if available
+  if (localStorage.getItem('bookmarks')) {
+    bookmarks = JSON.parse(localStorage.getItem('bookmarks'));
+  } else {
+    // Create bookmarks array in localStorage
+    bookmarks = [
+      {
+        name: 'Jacinto Design',
+        url: 'http://jacinto.design',
+      },
+    ];
+    localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+  }
+  buildBookmarks();
 }
 
-//4
-
-//Update the balance income and expence
-function updateValues() {
-  const amounts = transactions.map(
-    (transaction) => transaction.amount
-  );
-  const total = amounts
-    .reduce((acc, item) => (acc += item), 0)
-    .toFixed(2);
-  const income = amounts
-    .filter((item) => item > 0)
-    .reduce((acc, item) => (acc += item), 0)
-    .toFixed(2);
-  const expense =
-    (amounts
-      .filter((item) => item < 0)
-      .reduce((acc, item) => (acc += item), 0) *
-    -1).toFixed(2);
-
-    balance.innerText=`$${total}`;
-    money_plus.innerText = `$${income}`;
-    money_minus.innerText = `$${expense}`;
+// Delete Bookmark
+function deleteBookmark(url) {
+  // Loop through the bookmarks array
+  bookmarks.forEach((bookmark, i) => {
+    if (bookmark.url === url) {
+      bookmarks.splice(i, 1);
+    }
+  });
+  // Update bookmarks array in localStorage, re-populate DOM
+  localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+  fetchBookmarks();
 }
 
-
-//6 
-
-//Remove Transaction by ID
-function removeTransaction(id){
-  transactions = transactions.filter(transaction => transaction.id !== id);
-  updateLocalStorage();
-  Init();
+function storeBookmark(e) {
+  e.preventDefault();
+  const nameValue = websiteNameEl.value;
+  let urlValue = websiteUrlEl.value;
+  if (!urlValue.includes('http://', 'https://')) {
+    urlValue = `https://${urlValue}`;
+  }
+  // Validate
+  if (!validate(nameValue, urlValue)) {
+    return false;
+  }
+  // Set bookmark object, add to array
+  const bookmark = {
+    name: nameValue,
+    url: urlValue,
+  };
+  bookmarks.push(bookmark);
+  // Set bookmarks in localStorage, fetch, reset input fields
+  localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+  fetchBookmarks();
+  bookmarkForm.reset();
+  websiteNameEl.focus();
 }
-//last
-//update Local Storage Transaction
-function updateLocalStorage(){
-  localStorage.setItem('transactions',JSON.stringify(transactions));
-}
 
-//3
+// Event Listener
+bookmarkForm.addEventListener('submit', storeBookmark);
 
-//Init App
-function Init() {
-  list.innerHTML = "";
-  transactions.forEach(addTransactionDOM);
-  updateValues();
-}
-
-Init();
-
-form.addEventListener('submit',addTransaction);
+// On Load, Fetch Bookmarks
+fetchBookmarks();
